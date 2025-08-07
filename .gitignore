@@ -2,3 +2,6 @@
 songs/
 thumbnails/
 videos/
+
+# claude settings per os
+.claude
