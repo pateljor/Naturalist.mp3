@@ -83,7 +83,7 @@ def main(index):
         result_mp3.replace(".mp3", "_tracklist.txt"),
         HASHTAGS
     )
-    with open(result_mp4.replace(".mp4", "_description.txt"), 'w', encoding='utf-8') as f:
+    with open(result_mp4.replace(".mp4", "_description.txt").replace("videos/", "descriptions/"), 'w', encoding='utf-8') as f:
         f.write(description)
     
     print("\n📋 Generated Description:")
