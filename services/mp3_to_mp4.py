@@ -9,10 +9,25 @@ from pathlib import Path
 
 def create_mp4_from_image_and_audio(image_path, audio_path, output_path):
     """
-    Create MP4 video from image and audio using ffmpeg
+    Create MP4 video from image and audio using ffmpeg with progress display
     """
     try:
         import subprocess
+        import re
+        import sys
+        
+        # First, get the duration of the audio file
+        duration_cmd = [
+            'ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+            '-of', 'csv=p=0', str(audio_path)
+        ]
+        
+        try:
+            duration_result = subprocess.run(duration_cmd, capture_output=True, text=True)
+            total_duration = float(duration_result.stdout.strip())
+        except:
+            total_duration = 0
+            print("⚠️ Could not determine audio duration")
         
         cmd = [
             'ffmpeg',
@@ -25,26 +40,69 @@ def create_mp4_from_image_and_audio(image_path, audio_path, output_path):
             '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',  # Ensure dimensions are even
             '-pix_fmt', 'yuv420p',  # Pixel format for compatibility
             '-shortest',  # End when shortest stream ends
+            '-progress', 'pipe:1',  # Output progress to stdout
             '-y',  # Overwrite output file
             str(output_path)
         ]
         
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        print("🎬 Starting video conversion...")
+        if total_duration > 0:
+            minutes = int(total_duration // 60)
+            seconds = int(total_duration % 60)
+            print(f"📏 Audio duration: {minutes}m {seconds}s")
         
-        if result.returncode == 0:
-            print(f" Successfully created: {output_path}")
+        # Run ffmpeg with real-time progress
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                                 universal_newlines=True, bufsize=1)
+        
+        # Track progress
+        current_time = 0
+        last_progress = 0
+        
+        for line in process.stdout:
+            line = line.strip()
+            
+            # Parse time progress from ffmpeg output
+            if line.startswith('out_time_ms='):
+                try:
+                    time_ms = int(line.split('=')[1])
+                    current_time = time_ms / 1000000  # Convert microseconds to seconds
+                    
+                    if total_duration > 0:
+                        progress = min((current_time / total_duration) * 100, 100)
+                        
+                        # Only update every 5% to avoid spam
+                        if progress - last_progress >= 5 or progress >= 99:
+                            current_minutes = int(current_time // 60)
+                            current_seconds = int(current_time % 60)
+                            total_minutes = int(total_duration // 60)
+                            total_seconds = int(total_duration % 60)
+                            
+                            progress_bar = "█" * int(progress // 5) + "░" * (20 - int(progress // 5))
+                            print(f"\r🎬 Progress: [{progress_bar}] {progress:.1f}% ({current_minutes}:{current_seconds:02d}/{total_minutes}:{total_seconds:02d})", end='', flush=True)
+                            last_progress = progress
+                except (ValueError, IndexError):
+                    pass
+        
+        # Wait for process to complete
+        process.wait()
+        print()  # New line after progress bar
+        
+        if process.returncode == 0:
+            print(f"✅ Successfully created: {output_path}")
             return True
         else:
-            print(f" Error creating video: {result.stderr}")
+            stderr = process.stderr.read()
+            print(f"❌ Error creating video: {stderr}")
             return False
             
     except FileNotFoundError:
-        print(" Error: ffmpeg not found. Please install ffmpeg first.")
+        print("❌ Error: ffmpeg not found. Please install ffmpeg first.")
         print("  On macOS: brew install ffmpeg")
         print("  On Ubuntu: sudo apt install ffmpeg")
         return False
     except Exception as e:
-        print(f" Unexpected error: {e}")
+        print(f"❌ Unexpected error: {e}")
         return False
 
 def get_files_in_folder(folder_path, extensions):
