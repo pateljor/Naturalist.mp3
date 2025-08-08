@@ -2,6 +2,8 @@
 songs/
 thumbnails/
 videos/
+prod_songs/
+playlists/
 
 # claude settings per os
 .claude
