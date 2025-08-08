@@ -88,8 +88,8 @@ def main(index):
     
     print("\n📋 Generated Description:")
     print("=" * 50)
-    print(description)
-    print("=" * 50)
+    print(f"\n🎉 Everythign is complete! 🎉")
+
     
         
 if __name__ == "__main__":
