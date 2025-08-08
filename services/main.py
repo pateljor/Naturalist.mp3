@@ -1,8 +1,11 @@
 from stability_official_api import stability_lofi_generation
 from audio_stitcher import stitch_audio_files
 from mp3_to_mp4 import convert_audio_to_video
+from description_generator import generate_description
 import json
 import random
+
+HASHTAGS = """#backgroundmusicwithoutlimitations #coffeetime #coffeebreak #coffeeshopmusic #cafemusic #lofimusic #chillmusic #chillhop #lofihiphop #relaxingmusic #naturemusic #lofimusicforsleep #musicforsleep #studymusic #retromusic #lofichill #retrolofi #funk #funkopop #relaxation #relaxmusic #lofiremix #backgroundmusicforsleep #lofiforstudy"""
 
 def main(index):
     print("🎵 Reading JSON Data for Lofi Plalists")
@@ -15,45 +18,43 @@ def main(index):
         lofi_playlist_data = json.load(f)
 
     playlist_data = lofi_playlist_data[index] # set index to what playlist you want
-    playlist_name = playlist_data['title']
-    playlist_songs = playlist_data['song_names']
 
-    ## API CALLS
+    # ## API CALLS
     
-    # Stability API        
-    print("🎵 Stability AI Stable Audio 2.0 - Official API")
-    print("🎵 ...Logic for Music GPT comming soon")
-    print("=" * 60)
-    print()
+    # # Stability API        
+    # print("🎵 Stability AI Stable Audio 2.0 - Official API")
+    # print("🎵 ...Logic for Music GPT comming soon")
+    # print("=" * 60)
+    # print()
 
         
-    for song in playlist_songs:
+    # for song in playlist_data['song_names']:
         
-        #TODO have prompt design here
+    #     #TODO have prompt design here
     
-        stability_lofi_generation(
-            song_name=song,
-            prompt=f"chill lofi hip hop beat, mellow jazzy piano chords, relaxing atmosphere, slow tempo, match the vibe of the song match the song_name: {song}",
-            duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
-        ) 
+    #     stability_lofi_generation(
+    #         song_name=song,
+    #         prompt=f"chill lofi hip hop beat, mellow jazzy piano chords, relaxing atmosphere, slow tempo, match the vibe of the song match the song_name: {song}",
+    #         duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
+    #     ) 
 
-        #TODO Add logic for MusciGPT API
+    #     #TODO Add logic for MusciGPT API
         
-        # Ideally one half of songs are musicGPT other half are stability or can A/B test performance
+    #     # Ideally one half of songs are musicGPT other half are stability or can A/B test performance
 
     # Call stitcher
     print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
     print("=" * 60)
     
     # Run the stitching process
-    result = stitch_audio_files(
-        playlist_title=playlist_name,
+    result_mp3 = stitch_audio_files(
+        playlist_title=playlist_data['title'],
         input_folder="songs",
         fade_duration=5,  # 5 seconds crossfade
         silence_duration=8  # 8 seconds of silence after each fade
     )
     
-    if result:
+    if result_mp3:
         print(f"\n🎉 Audio stitching complete!")
     else:
         print("\n❌ Audio stitching failed!")
@@ -62,23 +63,34 @@ def main(index):
     print("🎬 MP3 to MP4 Converter")
     print("=" * 40)
 
-    # Example usage - modify these paths as needed
-    audio_file = f"playlists/{str(index)}_{playlist_name}"  # Change this to your audio file
-    image_file = None  # Will auto-find matching image
-    output_file = None  # Will auto-generate filename
 
     # Convert audio to video
-    result = convert_audio_to_video(
-        audio_file=audio_file,
-        image_file=image_file,
-        output_file=output_file
+    result_mp4 = convert_audio_to_video(
+        audio_file=result_mp3,
+        image_file=None,
+        output_file=result_mp3.replace(".mp3", ".mp4").replace("plalists/", "videos/")
     )
 
-    if result:
+    if result_mp4:
         print(f"\n🎉 Conversion complete!")
-        print(f"📹 Video saved as: {result}")
+        print(f"📹 Video saved as: {result_mp4}")
     else:
         print("\n❌ Conversion failed!")
+        
+    # Call description generator and save
+    description = generate_description(
+        playlist_data['description'],
+        result_mp3.replace(".mp3", "_tracklist.txt"),
+        HASHTAGS
+    )
+    with open(result_mp4.replace(".mp4", "_description.txt"), 'w', encoding='utf-8') as f:
+        f.write(description)
+    
+    print("\n📋 Generated Description:")
+    print("=" * 50)
+    print(description)
+    print("=" * 50)
+    
         
 if __name__ == "__main__":
     main(index=1)
