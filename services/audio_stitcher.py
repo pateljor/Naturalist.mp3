@@ -83,7 +83,7 @@ def calculate_timestamps(audio_files, fade_duration, silence_duration=0):
     
     return timestamps
 
-def stitch_audio_files(playlist_title, input_folder="prod_songs", output_file=None, fade_duration=5, silence_duration=0):
+def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, fade_duration=5, silence_duration=0):
     """
     Stitch together all audio files from a folder with fade transitions using FFmpeg
     
@@ -135,7 +135,7 @@ def stitch_audio_files(playlist_title, input_folder="prod_songs", output_file=No
     # Generate output filename if not provided
     if output_file is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"{playlist_title}_{timestamp}.mp3"
+        output_file = f"playlists/{playlist_title}_{timestamp}.mp3"
     
     if silence_duration > 0:
         print(f"\n🔧 Stitching with {fade_duration}s crossfade transitions and {silence_duration}s silence gaps...")
@@ -306,26 +306,3 @@ def stitch_audio_files(playlist_title, input_folder="prod_songs", output_file=No
             os.unlink(concat_file)
         except:
             pass
-
-def main():
-    """Main function to run the audio stitcher"""
-    print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
-    print("=" * 60)
-    
-    # Run the stitching process
-    result = stitch_audio_files(
-        playlist_title="insert_playlist_title_here",
-        input_folder="prod_songs",
-        fade_duration=5,  # 5 seconds crossfade
-        silence_duration=8  # 8 seconds of silence after each fade
-    )
-    
-    if result:
-        print(f"\n🎉 Audio stitching complete!")
-        print(f"🔊 Play with: ffplay '{result}'")
-        print(f"🎵 Or open in your preferred audio player")
-    else:
-        print("\n❌ Audio stitching failed!")
-
-if __name__ == "__main__":
-    main()

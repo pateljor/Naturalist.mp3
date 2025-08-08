@@ -111,7 +111,7 @@ class StabilityAudioAPI:
         """Save audio data to file"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"prod_songs/{song_name}_{timestamp}.{format_ext}"
+            filename = f"songs/{song_name}_{timestamp}.{format_ext}"
             
             with open(filename, 'wb') as f:
                 f.write(audio_data)
@@ -129,7 +129,7 @@ class StabilityAudioAPI:
             print(f"❌ Error saving audio: {e}")
             return None
 
-def test_lofi_generation(song_name, prompt, duration):
+def stability_lofi_generation(song_name, prompt, duration):
     """Test lofi beat generation with various prompts"""
     
     api = StabilityAudioAPI()
@@ -181,29 +181,5 @@ def test_lofi_generation(song_name, prompt, duration):
         print("4. ✓ Check rate limits (150 req/10 seconds)")
     
     return generated_files
-
-if __name__ == "__main__":
-    print("🎵 Stability AI Stable Audio 2.0 - Official API Test")
-    print("=" * 60)
-    print("📋 Setup:")
-    print("1. Get API key: https://platform.stability.ai/")
-    print("2. Set environment: set STABILITY_API_KEY=sk-your-key-here")
-    print("3. Ensure you have credits in your account")
-    print()
-    
-    # Load lofi playlist data as dict variable
-    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data.json', 'r') as f:
-        lofi_playlist_data = json.load(f)
-    
-    # only use first one for test    
-    playlist_test = lofi_playlist_data[0]
-    
-    # Run the test
-    for song in playlist_test['song_names'][2:3]:
-        test_lofi_generation(
-            song_name=song,
-            prompt=f"chill lofi hip hop beat, mellow jazzy piano chords, relaxing atmosphere, slow tempo, match the vibe of the song match the song_name: {song}",
-            duration=random.randint(int(150), int(210)) # random time intervals
-        )
 
 
