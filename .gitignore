@@ -5,6 +5,7 @@ videos/
 prod_songs/
 spare_songs/
 playlists/
+descriptions/
 
 # claude settings per os
 .claude
