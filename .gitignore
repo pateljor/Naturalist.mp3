@@ -5,3 +5,6 @@ videos/
 
 # claude settings per os
 .claude
+
+# env
+.env.local

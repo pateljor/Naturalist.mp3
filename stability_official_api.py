@@ -6,14 +6,20 @@ Based on the official API documentation from platform.stability.ai
 
 import os
 import requests
+import json
 from datetime import datetime
+import random
+from dotenv import load_dotenv
+
+# load env file
+load_dotenv(dotenv_path=".env.local")
 
 class StabilityAudioAPI:
     def __init__(self, api_key=None):
-        self.api_key = "xxxx"
+        self.api_key = os.getenv("STABILITY_AUDIO_API_KEY")
         self.endpoint = "https://api.stability.ai/v2beta/audio/stable-audio-2/text-to-audio"
     
-    def generate_audio(self, prompt, duration=30, model="stable-audio-2", output_format="wav", 
+    def generate_audio(self, prompt, title, duration, model="stable-audio-2", output_format="mp3", 
                       steps=50, cfg_scale=7, seed=None):
         """
         Generate audio using Stability AI's official Stable Audio 2.0 API
@@ -71,7 +77,7 @@ class StabilityAudioAPI:
             
             if response.status_code == 200:
                 # Success - got audio bytes
-                return self._save_audio(response.content, output_format)
+                return self._save_audio(title, response.content, output_format)
             
             elif response.status_code == 400:
                 print(f"❌ Invalid parameters: {response.text}")
@@ -101,11 +107,11 @@ class StabilityAudioAPI:
             print(f"❌ Request error: {e}")
             return None
     
-    def _save_audio(self, audio_data, format_ext):
+    def _save_audio(self, title, audio_data, format_ext):
         """Save audio data to file"""
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"stable_audio_lofi_{timestamp}.{format_ext}"
+            filename = f"stable_audio_lofi_{timestamp}_{title}.{format_ext}"
             
             with open(filename, 'wb') as f:
                 f.write(audio_data)
@@ -123,7 +129,7 @@ class StabilityAudioAPI:
             print(f"❌ Error saving audio: {e}")
             return None
 
-def test_lofi_generation():
+def test_lofi_generation(title, prompt, duration):
     """Test lofi beat generation with various prompts"""
     
     api = StabilityAudioAPI()
@@ -131,9 +137,9 @@ def test_lofi_generation():
     # Curated lofi prompts for different vibes
     lofi_prompts = [
         {
-            "name": "Classic Chill",
-            "prompt": "chill lofi hip hop beat, mellow jazzy piano chords, soft vinyl crackle, relaxing atmosphere, slow tempo",
-            "duration": 300
+            "name": title,
+            "prompt": prompt,
+            "duration": duration
         },
     ]
     
@@ -152,10 +158,11 @@ def test_lofi_generation():
     
     filename = api.generate_audio(
         prompt=test_prompt['prompt'],
+        title=title,
         duration=test_prompt['duration'],
         model="stable-audio-2",  # Use stable-audio-2 for testing
-        output_format="wav",
-        steps=10,  # Default quality
+        output_format="mp3",
+        steps=30,  # Default quality
         cfg_scale=7  # Good balance
     )
     
@@ -184,8 +191,19 @@ if __name__ == "__main__":
     print("3. Ensure you have credits in your account")
     print()
     
-    # Run the test
-    test_lofi_generation()
+    # Load lofi playlist data as dict variable
+    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data.json', 'r') as f:
+        lofi_playlist_data = json.load(f)
     
-    # Uncomment to test custom generation:
-    # generate_custom_lofi("upbeat lofi with saxophone and vinyl crackle, coffee shop ambiance", 47, high_quality=True)
+    # only use first one for test    
+    playlist_test = lofi_playlist_data[0]
+    
+    # Run the test
+    for song in playlist_test['song_names'][1:]:
+        test_lofi_generation(
+            title=song,
+            prompt=f"chill lofi hip hop beat, mellow jazzy piano chords, relaxing atmosphere, slow tempo, match the vibe of the song match the title: {song}",
+            duration=random.randint(int(150), int(210)) # random time intervals
+        )
+
+

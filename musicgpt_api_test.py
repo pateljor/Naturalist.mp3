@@ -12,6 +12,10 @@ import threading
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from dotenv import load_dotenv
+
+# load env file
+load_dotenv(dotenv_path=".env.local")
 
 class WebhookServer:
     """Simple webhook server to receive MusicGPT results"""
@@ -99,7 +103,7 @@ class MusicGPTAPI:
     """MusicGPT API client with webhook support"""
     
     def __init__(self, api_key=None):
-        self.api_key = "xxxx"
+        self.api_key = os.getenv("MUSIC_GPT_API_KEY")
         self.base_url = "https://api.musicgpt.com/api/public/v1"
         self.webhook_server = None
     
