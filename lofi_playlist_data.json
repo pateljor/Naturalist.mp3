@@ -1,8 +1,8 @@
 [
   {
-    "title": "Take a walk in the forest, it will clear your mind",
+    "title": "Take a walk in the forest",
     "description": "When life gets overwhelming, sometimes the best medicine is stepping into nature's embrace. Let the rustling leaves and gentle breeze wash away your stress as you reconnect with the natural world around you.",
-    "song_names": ["Morning Dew on Leaves", "Cedar Branch", "Forest Path", "Pine Needle Carpet", "Woodland Stream", "Ancient Oak", "Moss-Covered Stone", "Sunbeam Through Trees", "Fern Grove", "Bird Song Echo", "Maple Canopy", "Creek Pebbles", "Wild Berry Bush", "Fallen Log Bridge", "Misty Trail"]
+    "song_names": ["Golden Hour Shadows", "Frosted First Light", "Quiet Daybreak", "Luminous Morning", "Lazy Melody", "Wistful Glow", "Daybreak Light", "Hazy Stream", "Late Night in the Rain", "Loop of Moonlight", "Cafe of Waves", "Velvet Rain", "Uplifting Letters", "Amber Starlight", "Peaceful Shore", "Uplifting Golden Hour", "Wind and Echo", "Melody of Waves", "Midnight Rain", "Flow of Branches"]
   },
   {
     "title": "Sit by the ocean and let the waves wash your worries away",
@@ -360,3 +360,4 @@
     "song_names": ["Horizon Line", "Sky Meets Earth", "Endless View", "Far Horizon", "Distant Line", "Horizon Dream", "Edge of Sky", "Infinite View", "Horizon Call", "Boundary Line", "Sky Edge", "Far Vista", "Horizon Song", "Endless Sky", "Wide View"]
   }
 ]
+

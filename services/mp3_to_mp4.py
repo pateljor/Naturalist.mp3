@@ -6,103 +6,101 @@ to create an MP4 video with the image as a static background.
 
 import sys
 from pathlib import Path
+from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip
 
 def create_mp4_from_image_and_audio(image_path, audio_path, output_path):
     """
-    Create MP4 video from image and audio using ffmpeg with progress display
+    Create MP4 video from image and audio using MoviePy (much faster than FFmpeg)
     """
     try:
-        import subprocess
-        import re
-        import sys
+        import time
         
-        # First, get the duration of the audio file
-        duration_cmd = [
-            'ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
-            '-of', 'csv=p=0', str(audio_path)
-        ]
-        
-        try:
-            duration_result = subprocess.run(duration_cmd, capture_output=True, text=True)
-            total_duration = float(duration_result.stdout.strip())
-        except:
-            total_duration = 0
-            print("⚠️ Could not determine audio duration")
-        
-        cmd = [
-            'ffmpeg',
-            '-loop', '1',  # Loop the image
-            '-i', str(image_path),  # Input image
-            '-i', str(audio_path),  # Input audio
-            '-c:v', 'libx264',  # Video codec
-            '-c:a', 'aac',  # Audio codec
-            '-b:a', '192k',  # Audio bitrate
-            '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',  # Ensure dimensions are even
-            '-pix_fmt', 'yuv420p',  # Pixel format for compatibility
-            '-shortest',  # End when shortest stream ends
-            '-progress', 'pipe:1',  # Output progress to stdout
-            '-y',  # Overwrite output file
-            str(output_path)
-        ]
-        
-        print("🎬 Starting video conversion...")
-        if total_duration > 0:
-            minutes = int(total_duration // 60)
-            seconds = int(total_duration % 60)
-            print(f"📏 Audio duration: {minutes}m {seconds}s")
-        
-        # Run ffmpeg with real-time progress
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
-                                 universal_newlines=True, bufsize=1)
-        
-        # Track progress
-        current_time = 0
-        last_progress = 0
-        
-        for line in process.stdout:
-            line = line.strip()
-            
-            # Parse time progress from ffmpeg output
-            if line.startswith('out_time_ms='):
-                try:
-                    time_ms = int(line.split('=')[1])
-                    current_time = time_ms / 1000000  # Convert microseconds to seconds
-                    
-                    if total_duration > 0:
-                        progress = min((current_time / total_duration) * 100, 100)
-                        
-                        # Only update every 5% to avoid spam
-                        if progress - last_progress >= 5 or progress >= 99:
-                            current_minutes = int(current_time // 60)
-                            current_seconds = int(current_time % 60)
-                            total_minutes = int(total_duration // 60)
-                            total_seconds = int(total_duration % 60)
-                            
-                            progress_bar = "█" * int(progress // 5) + "░" * (20 - int(progress // 5))
-                            print(f"\r🎬 Progress: [{progress_bar}] {progress:.1f}% ({current_minutes}:{current_seconds:02d}/{total_minutes}:{total_seconds:02d})", end='', flush=True)
-                            last_progress = progress
-                except (ValueError, IndexError):
-                    pass
-        
-        # Wait for process to complete
-        process.wait()
-        print()  # New line after progress bar
-        
-        if process.returncode == 0:
-            print(f"✅ Successfully created: {output_path}")
-            return True
-        else:
-            stderr = process.stderr.read()
-            print(f"❌ Error creating video: {stderr}")
+        # Validate input files
+        if not image_path.exists():
+            print(f"❌ Image file not found: {image_path}")
+            return False
+        if not audio_path.exists():
+            print(f"❌ Audio file not found: {audio_path}")
             return False
             
-    except FileNotFoundError:
-        print("❌ Error: ffmpeg not found. Please install ffmpeg first.")
-        print("  On macOS: brew install ffmpeg")
-        print("  On Ubuntu: sudo apt install ffmpeg")
+        # Check file sizes (0 bytes indicates corruption)
+        if image_path.stat().st_size == 0:
+            print(f"❌ Image file is empty: {image_path}")
+            return False
+        if audio_path.stat().st_size == 0:
+            print(f"❌ Audio file is empty: {audio_path}")
+            return False
+            
+        print(f"🔍 Input validation passed:")
+        print(f"  🖼️  Image: {image_path} ({image_path.stat().st_size / 1024:.1f} KB)")
+        print(f"  🎵 Audio: {audio_path} ({audio_path.stat().st_size / 1024:.1f} KB)")
+        
+        print("🎬 Starting video conversion with MoviePy...")
+        start_time = time.time()
+        
+        # Load audio clip to get duration
+        print("🎵 Loading audio...")
+        audio_clip = AudioFileClip(str(audio_path))
+        duration = audio_clip.duration
+        
+        minutes = int(duration // 60)
+        seconds = int(duration % 60)
+        print(f"📏 Audio duration: {minutes}m {seconds}s")
+        
+        # Load image and set duration to match audio
+        print("🖼️  Loading image...")
+        image_clip = ImageClip(str(image_path), duration=duration)
+        
+        # Combine image and audio
+        print("🎬 Compositing video...")
+        video_clip = image_clip.set_audio(audio_clip)
+        
+        # Progress callback function
+        def progress_callback(get_frame, t):
+            progress = (t / duration) * 100 if duration > 0 else 0
+            elapsed = time.time() - start_time
+            if int(progress) % 5 == 0:  # Update every 5%
+                current_minutes = int(t // 60)
+                current_seconds = int(t % 60)
+                total_minutes = int(duration // 60)
+                total_seconds = int(duration % 60)
+                
+                progress_bar = "█" * int(progress // 5) + "░" * (20 - int(progress // 5))
+                print(f"\r🎬 Progress: [{progress_bar}] {progress:.1f}% ({current_minutes}:{current_seconds:02d}/{total_minutes}:{total_seconds:02d}) - {elapsed:.1f}s elapsed", end='', flush=True)
+            
+            return get_frame(t)
+        
+        # Write video file
+        print("💾 Writing video file...")
+        video_clip.write_videofile(
+            str(output_path),
+            fps=1,  # Very low FPS since it's a static image
+            codec='libx264',
+            audio_codec='aac',
+            temp_audiofile='temp-audio.m4a',
+            remove_temp=True,
+            verbose=False,
+            logger=None  # Suppress moviepy's verbose output
+        )
+        
+        # Clean up clips
+        audio_clip.close()
+        image_clip.close()
+        video_clip.close()
+        
+        elapsed_time = time.time() - start_time
+        print(f"\n✅ Successfully created: {output_path}")
+        print(f"⏱️  Total time: {elapsed_time:.1f}s")
+        return True
+        
+    except ImportError:
+        print("❌ Error: MoviePy not found. Installing...")
+        import subprocess
+        subprocess.run([sys.executable, "-m", "pip", "install", "moviepy"])
+        print("✅ MoviePy installed. Please run the script again.")
         return False
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"❌ Error creating video: {e}")
         return False
 
 def get_files_in_folder(folder_path, extensions):

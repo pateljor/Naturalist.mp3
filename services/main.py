@@ -28,23 +28,23 @@ def main(index):
     print()
 
         
-    for song in playlist_data['song_names'][0:1]:
+    # for song in playlist_data['song_names']:
         
-        #TODO have prompt design here
+    #     #TODO have prompt design here
     
-        stability_lofi_generation(
-            song_name=song,
-            prompt=f"chill lofi hip hop beat, mellow jazzy piano chords, relaxing atmosphere, slow tempo",
-            duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
-        ) 
+    #     stability_lofi_generation(
+    #         song_name=song,
+    #         prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, titled “{song}” with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+    #         duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
+    #     ) 
 
-        #TODO Add logic for MusciGPT API
+    #     #TODO Add logic for MusciGPT API
         
-        # Ideally one half of songs are musicGPT other half are stability or can A/B test performance
+    #     # Ideally one half of songs are musicGPT other half are stability or can A/B test performance
 
-    # Call stitcher
-    print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
-    print("=" * 60)
+    # # Call stitcher
+    # print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
+    # print("=" * 60)
     
     # Run the stitching process
     result_mp3 = stitch_audio_files(
@@ -68,7 +68,7 @@ def main(index):
     result_mp4 = convert_audio_to_video(
         audio_file=result_mp3,
         image_file=None,
-        output_file=result_mp3.replace(".mp3", ".mp4").replace("plalists/", "videos/")
+        output_file=result_mp3.replace(".mp3", ".mp4")
     )
 
     if result_mp4:
@@ -83,7 +83,7 @@ def main(index):
         result_mp3.replace(".mp3", "_tracklist.txt"),
         HASHTAGS
     )
-    with open(result_mp4.replace(".mp4", "_description.txt").replace("videos/", "descriptions/"), 'w', encoding='utf-8') as f:
+    with open(result_mp4.replace(".mp4", "_description.txt"), 'w', encoding='utf-8') as f:
         f.write(description)
     
     print("\n📋 Generated Description:")
@@ -93,4 +93,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=1)
+    main(index=0)
