@@ -15,7 +15,7 @@ def main(index):
     print()
 
     # Setup lofi json data
-    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data.json', 'r') as f:
+    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data_fixed.json', 'r') as f:
         lofi_playlist_data = json.load(f)
 
     playlist_data = lofi_playlist_data[index] # set index to what playlist you want
@@ -38,10 +38,11 @@ def main(index):
 
         
     # MusicGPT Call    
-    for i in range(0, playlist_data['song_names'], 2):
+    for i in range(0, len(playlist_data['song_names']), 2):
         musicgpt_lofi_generation(
-            # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
-            prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+            prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
+            # prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+            music_style='Lofi',
             song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
         )
 
@@ -96,4 +97,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=2)
+    main(index=0)

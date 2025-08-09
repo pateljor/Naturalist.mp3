@@ -17,7 +17,7 @@ class MusicGPTAPI:
     """MusicGPT API client with polling support"""
     
     def __init__(self):
-        self.api_key = os.getenv("MUSIC_GPT_API_KEY")
+        self.api_key = os.getenv("MUSICGPT_API_KEY")
         self.base_url = "https://api.musicgpt.com/api/public/v1"
     
     def generate_music(self, prompt=None, music_style=None, lyrics=None, 
@@ -65,10 +65,17 @@ class MusicGPTAPI:
             print(f"🎤 Lyrics: {lyrics[:100]}{'...' if len(lyrics) > 100 else ''}")
         print(f"🎛️  Instrumental: {make_instrumental}, Vocal Only: {vocal_only}")
         
+        # Debug: show exact payload being sent
+        print(f"🔍 Payload: {payload}")
+        print(f"🔍 Headers: {headers}")
+        
         try:
             # Send request
+            endpoint_url = f"{self.base_url}/MusicAI"
+            print(f"🔍 Sending request to: {endpoint_url}")
+            
             response = requests.post(
-                f"{self.base_url}/MusicAI",
+                endpoint_url,
                 headers=headers,
                 json=payload
             )
@@ -288,8 +295,8 @@ def musicgpt_lofi_generation(prompt, music_style, song_names=None):
     print("-" * 40)
     
     result = api.generate_music(
-        prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
-        music_style='Lofi',
+        prompt=prompt,
+        music_style=music_style,
         make_instrumental=True,
         song_names=song_names
     )
@@ -312,16 +319,3 @@ def musicgpt_lofi_generation(prompt, music_style, song_names=None):
         print("3. ✓ Check your network connection for API requests")
     
     return result
-
-
-if __name__ == "__main__":
-    print("🎵 MusicGPT API Test - Lofi Music Generation")
-    print("=" * 60)
-    print("📋 Setup:")
-    print("1. Get API key: https://musicgpt.com/")
-    print("2. Set environment: set MUSICGPT_API_KEY=your-key-here")
-    print("3. Ensure you have credits in your account")
-    print()
-    
-    # Run the test
-    musicgpt_lofi_generation(['asdhjgas', 'djjaskh'])
