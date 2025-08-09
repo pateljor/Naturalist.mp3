@@ -40,8 +40,9 @@ def main(index):
     # MusicGPT Call    
     for i in range(0, len(playlist_data['song_names']), 2):
         musicgpt_lofi_generation(
-            prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
-            # prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+            # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
+            prompt=f"A slightly upbeat lofi hip hop instrumental with a warm, cozy, and cheerful mood (uplifting yet relaxed), slow tempo, bright but soothing.",
+            # prompt="A lo-fi instrumental which could suit walking outside in nature in the morning"
             music_style='Lofi',
             song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
         )
@@ -97,4 +98,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=0)
+    main(index=10)
