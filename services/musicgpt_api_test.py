@@ -1,115 +1,27 @@
 #!/usr/bin/env python3
 """
-MusicGPT API Integration with Webhook Support
+MusicGPT API Integration with Polling Support
 Generates lofi music using MusicGPT's AI music generation API
 """
 
 import os
 import time
-import json
 import requests
-import threading
 from datetime import datetime
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 
 # load env file
 load_dotenv(dotenv_path=".env.local")
 
-class WebhookServer:
-    """Simple webhook server to receive MusicGPT results"""
-    
-    def __init__(self, port=8000):
-        self.port = port
-        self.results = {}
-        self.server = None
-        self.server_thread = None
-    
-    def start_server(self):
-        """Start the webhook server in a separate thread"""
-        
-        webhook_handler = self
-        
-        class WebhookHandler(BaseHTTPRequestHandler):
-            def do_POST(self):
-                content_length = int(self.headers.get('Content-Length', 0))
-                post_data = self.rfile.read(content_length)
-                
-                try:
-                    webhook_data = json.loads(post_data.decode('utf-8'))
-                    
-                    # Store the result
-                    task_id = webhook_data.get('task_id')
-                    if task_id:
-                        webhook_handler.results[task_id] = webhook_data
-                        print(f"📨 Webhook received for task: {task_id}")
-                        
-                        # Print result summary
-                        if webhook_data.get('success'):
-                            print("✅ Generation completed successfully!")
-                            if 'music_url_1' in webhook_data:
-                                print(f"🎵 Music Track 1: {webhook_data['music_url_1']}")
-                            if 'music_url_2' in webhook_data:
-                                print(f"🎵 Music Track 2: {webhook_data['music_url_2']}")
-                        else:
-                            print(f"❌ Generation failed: {webhook_data.get('error', 'Unknown error')}")
-                    
-                    # Send response
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"status": "received"}).encode())
-                    
-                except Exception as e:
-                    print(f"❌ Webhook error: {e}")
-                    self.send_response(400)
-                    self.end_headers()
-            
-            def log_message(self, format, *args):
-                # Suppress default logging
-                pass
-        
-        try:
-            self.server = HTTPServer(('localhost', self.port), WebhookHandler)
-            self.server_thread = threading.Thread(target=self.server.serve_forever)
-            self.server_thread.daemon = True
-            self.server_thread.start()
-            print(f"🎣 Webhook server started on http://localhost:{self.port}")
-            return True
-        except Exception as e:
-            print(f"❌ Failed to start webhook server: {e}")
-            return False
-    
-    def stop_server(self):
-        """Stop the webhook server"""
-        if self.server:
-            self.server.shutdown()
-            self.server.server_close()
-            print("🛑 Webhook server stopped")
-    
-    def get_result(self, task_id, timeout=300):
-        """Wait for webhook result"""
-        start_time = time.time()
-        
-        while time.time() - start_time < timeout:
-            if task_id in self.results:
-                return self.results[task_id]
-            time.sleep(2)
-        
-        return None
-
 class MusicGPTAPI:
-    """MusicGPT API client with webhook support"""
+    """MusicGPT API client with polling support"""
     
-    def __init__(self, api_key=None):
+    def __init__(self):
         self.api_key = os.getenv("MUSIC_GPT_API_KEY")
         self.base_url = "https://api.musicgpt.com/api/public/v1"
-        self.webhook_server = None
     
     def generate_music(self, prompt=None, music_style=None, lyrics=None, 
-                      make_instrumental=False, vocal_only=False, 
-                      use_webhook=True, webhook_port=8000):
+                      make_instrumental=False, vocal_only=False, song_names=None):
         """
         Generate music using MusicGPT API
         
@@ -119,22 +31,11 @@ class MusicGPTAPI:
             lyrics: Custom lyrics for the song
             make_instrumental: Generate instrumental-only track
             vocal_only: Generate vocals-only track
-            use_webhook: Whether to use webhook for async results
-            webhook_port: Port for webhook server
+            song_names: List of two strings to use as filenames for downloaded songs
         """
         
         if not self.api_key:
             raise ValueError("API key not found! Set MUSICGPT_API_KEY environment variable")
-        
-        # Setup webhook if requested
-        webhook_url = None
-        if use_webhook:
-            self.webhook_server = WebhookServer(webhook_port)
-            if self.webhook_server.start_server():
-                webhook_url = f"http://localhost:{webhook_port}"
-                print(f"🎯 Using webhook: {webhook_url}")
-            else:
-                print("⚠️ Webhook setup failed, proceeding without webhook")
         
         # Prepare request
         headers = {
@@ -154,8 +55,6 @@ class MusicGPTAPI:
             payload["make_instrumental"] = True
         if vocal_only:
             payload["vocal_only"] = True
-        if webhook_url:
-            payload["webhook_url"] = webhook_url
         
         print(f"🎵 Generating music with MusicGPT...")
         if prompt:
@@ -181,7 +80,7 @@ class MusicGPTAPI:
                 
                 if result.get("success"):
                     task_id = result.get("task_id")
-                    eta = result.get("eta", "unknown")
+                    eta = result.get("eta", 180)  # Default 3 minutes if not provided
                     
                     print(f"✅ Generation started!")
                     print(f"🆔 Task ID: {task_id}")
@@ -189,17 +88,11 @@ class MusicGPTAPI:
                     print(f"🎵 Track 1 ID: {result.get('conversion_id_1', 'N/A')}")
                     print(f"🎵 Track 2 ID: {result.get('conversion_id_2', 'N/A')}")
                     
-                    # Wait for webhook result if using webhook
-                    if use_webhook and self.webhook_server and task_id:
-                        print(f"⏳ Waiting for webhook result...")
-                        webhook_result = self.webhook_server.get_result(task_id, eta + 60)
-                        
-                        if webhook_result:
-                            return self._process_webhook_result(webhook_result)
-                        else:
-                            print("⏰ Webhook timeout")
-                            return {"task_id": task_id, "status": "timeout"}
+                    # Use polling to get results
+                    if task_id:
+                        return self.poll_for_result(task_id, eta, song_names)
                     
+                    # Return initial result if no task_id
                     return result
                 
                 else:
@@ -221,86 +114,184 @@ class MusicGPTAPI:
         except requests.exceptions.RequestException as e:
             print(f"❌ Request error: {e}")
             return None
-        
-        finally:
-            # Cleanup webhook server
-            if self.webhook_server:
-                self.webhook_server.stop_server()
     
-    def _process_webhook_result(self, webhook_data):
-        """Process webhook result and download music files"""
+    
+    def get_task_result(self, task_id):
+        """Get task result by ID using the getById endpoint"""
+        if not self.api_key:
+            raise ValueError("API key not found!")
         
-        if not webhook_data.get('success'):
-            return webhook_data
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
         
+        try:
+            response = requests.get(
+                f"{self.base_url}/byId?conversionType=MUSIC_AI&task_id={task_id}",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 404:
+                return {"error": "Task not found", "status_code": 404}
+            else:
+                return {"error": f"API error: {response.status_code}", "status_code": response.status_code}
+                
+        except requests.exceptions.RequestException as e:
+            return {"error": f"Request failed: {e}"}
+    
+    def poll_for_result(self, task_id, eta_seconds, song_names=None):
+        """Poll for task completion using getById endpoint"""
+        print(f"🔄 Polling for task completion...")
+        print(f"⏱️  Initial wait: {eta_seconds + 20} seconds")
+        
+        # Wait for ETA + 20 seconds before first poll
+        time.sleep(eta_seconds + 20)
+        
+        max_retries = 5
+        retry_delay = 30  # 30 seconds between retries
+        
+        for attempt in range(max_retries):
+            print(f"🔍 Polling attempt {attempt + 1}/{max_retries}")
+            
+            result = self.get_task_result(task_id)
+            
+            if "error" not in result:
+                # Check if task is completed - handle the new response format
+                conversion_data = result.get("conversion", {})
+                if result.get("success") or conversion_data.get("status") == "COMPLETED":
+                    print(f"✅ Task completed successfully!")
+                    return self._process_polling_result(result, song_names)
+                elif conversion_data.get("status") == "FAILED":
+                    print(f"❌ Task failed: {conversion_data.get('message', 'Unknown error')}")
+                    return result
+                elif conversion_data.get("status") in ["PENDING", "PROCESSING", "IN_PROGRESS"]:
+                    print(f"⏳ Task still processing... (attempt {attempt + 1}) - Status: {conversion_data.get('status')}")
+                else:
+                    print(f"🤔 Unexpected status: {conversion_data.get('status', 'unknown')}")
+            else:
+                print(f"❌ Polling error: {result.get('error')}")
+            
+            # Wait before next retry (except on last attempt)
+            if attempt < max_retries - 1:
+                print(f"⏸️  Waiting {retry_delay} seconds before next attempt...")
+                time.sleep(retry_delay)
+        
+        print(f"⏰ Maximum polling attempts reached")
+        return {"status": "timeout", "message": "Task did not complete within polling window"}
+    
+    def _process_polling_result(self, result_data, song_names=None):
+        """Process polling result and download music files"""
+        if not result_data.get('success'):
+            return result_data
+        
+        conversion_data = result_data.get('conversion', {})
         downloaded_files = []
         
-        # Download music tracks
+        # Download music tracks from conversion_path fields
         for i in [1, 2]:
-            music_url = webhook_data.get(f'music_url_{i}')
-            if music_url:
-                filename = self._download_music(music_url, f"track_{i}")
+            conversion_path = conversion_data.get(f'conversion_path_{i}')
+            
+            # Use custom song name if provided, otherwise use API title or default
+            if song_names and len(song_names) >= i:
+                track_title = song_names[i-1]  # i-1 because list is 0-indexed
+            else:
+                track_title = conversion_data.get(f'title_{i}', f'track_{i}')
+            
+            if conversion_path:
+                filename = self._download_music(conversion_path, track_title, i)
                 if filename:
                     downloaded_files.append(filename)
         
-        webhook_data['downloaded_files'] = downloaded_files
-        return webhook_data
+        result_data['downloaded_files'] = downloaded_files
+        
+        # Add some useful info from the conversion data
+        result_data['track_titles'] = {
+            'title_1': conversion_data.get('title_1'),
+            'title_2': conversion_data.get('title_2')
+        }
+        result_data['durations'] = {
+            'duration_1': conversion_data.get('conversion_duration_1'),
+            'duration_2': conversion_data.get('conversion_duration_2')
+        }
+        
+        return result_data
     
-    def _download_music(self, url, track_name):
+    def _download_music(self, url, track_name, track_number=None):
         """Download music file from URL"""
         try:
-            print(f"⬇️ Downloading {track_name}...")
+            print(f"⬇️ Downloading {track_name} from {url}...")
             
             response = requests.get(url)
             response.raise_for_status()
             
-            # Generate filename
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"musicgpt_{track_name}_{timestamp}.mp3"
+            print(f"📦 Response status: {response.status_code}, Content length: {len(response.content)} bytes")
             
-            with open(filename, 'wb') as f:
+            # Generate filename with track title
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # Clean track name for filename
+            clean_track_name = "".join(c for c in track_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            clean_track_name = clean_track_name.replace(' ', '_')
+            
+            if track_number:
+                filename = f"{clean_track_name}_{timestamp}_{track_number}.mp3"
+            else:
+                filename = f"{clean_track_name}_{timestamp}_.mp3"
+            
+            # Use absolute path in services directory
+            full_path = os.path.join('songs/', filename)
+            
+            print(f"📁 Saving to: {full_path}")
+            
+            with open(full_path, 'wb') as f:
                 f.write(response.content)
             
-            file_size = len(response.content) / (1024 * 1024)
-            print(f"✅ Downloaded: {filename} ({file_size:.2f} MB)")
-            
-            return filename
+            # Verify file was created
+            if os.path.exists(full_path):
+                file_size = len(response.content) / (1024 * 1024)
+                actual_size = os.path.getsize(full_path) / (1024 * 1024)
+                print(f"✅ Downloaded: {filename} ({file_size:.2f} MB)")
+                print(f"📂 File saved at: {full_path} ({actual_size:.2f} MB)")
+                return full_path
+            else:
+                print(f"❌ File was not created: {full_path}")
+                return None
             
         except Exception as e:
             print(f"❌ Download error for {track_name}: {e}")
+            import traceback
+            print(f"🔍 Full traceback: {traceback.format_exc()}")
             return None
 
-def test_musicgpt_lofi():
-    """Test MusicGPT with lofi prompts"""
+def musicgpt_lofi_generation(prompt, music_style, song_names=None):
+    """Test MusicGPT with lofi prompts
+    
+    Args:
+        song_names: List of two strings to use as filenames for the downloaded songs
+                   Example: ['My_Lofi_Track_1', 'My_Lofi_Track_2']
+    """
     
     api = MusicGPTAPI()
     
-    # Lofi test prompts
-    test_cases = [
-        {
-            "name": "Prompt-Based Lofi",
-            "prompt": "Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying",
-            "make_instrumental": True
-        }
-    ]
     
     print("🎵 MusicGPT API Test - LoFi Generation")
     print("=" * 60)
     print("⚙️  Make sure MUSICGPT_API_KEY environment variable is set!")
     print()
     
-    # Test with first case
-    test_case = test_cases[0]
-    print(f"🎯 Testing: {test_case['name']}")
+    # Test lofi generation
+    print(f"🎯 Testing: Lofi Hip Hop Generation")
+    if song_names:
+        print(f"🎼 Custom song names: {song_names[0]}, {song_names[1]}")
     print("-" * 40)
     
     result = api.generate_music(
-        prompt=test_case.get('prompt'),
-        music_style=test_case.get('music_style'),
-        lyrics=test_case.get('lyrics'),
-        make_instrumental=test_case.get('make_instrumental', False),
-        use_webhook=True,
-        webhook_port=8000
+        prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
+        music_style='Lofi',
+        make_instrumental=True,
+        song_names=song_names
     )
     
     if result and result.get('success'):
@@ -318,27 +309,10 @@ def test_musicgpt_lofi():
         print("\n🔧 Troubleshooting:")
         print("1. ✓ Check your API key: https://musicgpt.com/")
         print("2. ✓ Verify you have sufficient credits")
-        print("3. ✓ Ensure your network allows webhook connections")
-        print("4. ✓ Try running without webhook if connection issues persist")
+        print("3. ✓ Check your network connection for API requests")
     
     return result
 
-def generate_custom_lofi(prompt, instrumental=True):
-    """Generate custom lofi track"""
-    
-    api = MusicGPTAPI()
-    
-    print(f"🎵 Custom LoFi Generation with MusicGPT")
-    print(f"📝 Prompt: {prompt}")
-    print(f"🎼 Instrumental: {instrumental}")
-    
-    result = api.generate_music(
-        prompt=prompt,
-        make_instrumental=instrumental,
-        use_webhook=True
-    )
-    
-    return result
 
 if __name__ == "__main__":
     print("🎵 MusicGPT API Test - Lofi Music Generation")
@@ -347,11 +321,7 @@ if __name__ == "__main__":
     print("1. Get API key: https://musicgpt.com/")
     print("2. Set environment: set MUSICGPT_API_KEY=your-key-here")
     print("3. Ensure you have credits in your account")
-    print("4. Allow incoming connections on port 8000 for webhook")
     print()
     
     # Run the test
-    test_musicgpt_lofi()
-    
-    # Uncomment to test custom generation:
-    # generate_custom_lofi("Dreamy lofi beats with saxophone and rain sounds, perfect for late night studying", True)
+    musicgpt_lofi_generation(['asdhjgas', 'djjaskh'])

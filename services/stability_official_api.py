@@ -134,15 +134,6 @@ def stability_lofi_generation(song_name, prompt, duration):
     
     api = StabilityAudioAPI()
     
-    # Curated lofi prompts for different vibes
-    lofi_prompts = [
-        {
-            "name": song_name,
-            "prompt": prompt,
-            "duration": duration
-        },
-    ]
-    
     print("🎵 Stability AI Official API - LoFi Beat Generator")
     print("=" * 60)
     print("⚙️  Make sure STABILITY_API_KEY environment variable is set!")
@@ -150,19 +141,16 @@ def stability_lofi_generation(song_name, prompt, duration):
     
     generated_files = []
     
-    # Test with first prompt only for initial test
-    test_prompt = lofi_prompts[0]
-    
-    print(f"🎯 Testing: {test_prompt['name']}")
+    print(f"🎯 Running: {song_name}")
     print("-" * 40)
     
     filename = api.generate_audio(
-        prompt=test_prompt['prompt'],
+        prompt=prompt,
         song_name=song_name,
-        duration=test_prompt['duration'],
+        duration=duration,
         model="stable-audio-2",  # Use stable-audio-2 for testing
         output_format="mp3",
-        steps=50,  # Default quality
+        steps=100,  # Default quality
         cfg_scale=7  # Good balance
     )
     

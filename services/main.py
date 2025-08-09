@@ -1,4 +1,5 @@
 from stability_official_api import stability_lofi_generation
+from musicgpt_api_test import musicgpt_lofi_generation
 from audio_stitcher import stitch_audio_files
 from mp3_to_mp4 import convert_audio_to_video
 from description_generator import generate_description
@@ -27,24 +28,26 @@ def main(index):
     print("=" * 60)
     print()
 
-        
+    # # Stability Call    
     # for song in playlist_data['song_names']:
-        
-    #     #TODO have prompt design here
-    
     #     stability_lofi_generation(
     #         song_name=song,
-    #         prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, titled “{song}” with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+    #         prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
     #         duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
     #     ) 
 
-    #     #TODO Add logic for MusciGPT API
         
-    #     # Ideally one half of songs are musicGPT other half are stability or can A/B test performance
+    # MusicGPT Call    
+    for i in range(0, playlist_data['song_names'], 2):
+        musicgpt_lofi_generation(
+            # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
+            prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+            song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
+        )
 
-    # # Call stitcher
-    # print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
-    # print("=" * 60)
+    # Call stitcher
+    print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
+    print("=" * 60)
     
     # Run the stitching process
     result_mp3 = stitch_audio_files(
@@ -93,4 +96,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=0)
+    main(index=2)
