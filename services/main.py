@@ -23,10 +23,10 @@ def main(index):
     # ## API CALLS
     
     # Stability API        
-    print("🎵 Stability AI Stable Audio 2.0 - Official API")
-    print("🎵 ...Logic for Music GPT comming soon")
-    print("=" * 60)
-    print()
+    # print("🎵 Stability AI Stable Audio 2.0 - Official API")
+    # print("🎵 ...Logic for Music GPT comming soon")
+    # print("=" * 60)
+    # print()
 
     # # Stability Call    
     # for song in playlist_data['song_names']:
