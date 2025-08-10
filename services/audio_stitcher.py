@@ -23,10 +23,16 @@ def get_audio_duration(file_path):
         return 0
 
 def format_timestamp(seconds):
-    """Format seconds into MM:SS timestamp format"""
-    minutes = int(seconds // 60)
-    secs = int(seconds % 60)
-    return f"{minutes:02d}:{secs:02d}"
+    """Format seconds into MM:SS or HH:MM:SS timestamp format"""
+    if seconds >= 3600:  # 1 hour or more
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    else:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes:02d}:{secs:02d}"
 
 def extract_song_title(filename):
     """Extract clean song title from filename"""
