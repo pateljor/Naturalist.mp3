@@ -15,27 +15,10 @@ def main(index):
     print()
 
     # Setup lofi json data
-    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data_fixed.json', 'r') as f:
+    with open('/Users/jordanpatel/Git/lofi-channel/lofi_playlist_data.json', 'r') as f:
         lofi_playlist_data = json.load(f)
 
     playlist_data = lofi_playlist_data[index] # set index to what playlist you want
-
-    # ## API CALLS
-    
-    # Stability API        
-    # print("🎵 Stability AI Stable Audio 2.0 - Official API")
-    # print("🎵 ...Logic for Music GPT comming soon")
-    # print("=" * 60)
-    # print()
-
-    # # Stability Call    
-    # for song in playlist_data['song_names']:
-    #     stability_lofi_generation(
-    #         song_name=song,
-    #         prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
-    #         duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
-    #     ) 
-
         
     # MusicGPT Call    
     for i in range(0, len(playlist_data['song_names']), 2):
@@ -98,4 +81,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=0)
+    main(index=1)
