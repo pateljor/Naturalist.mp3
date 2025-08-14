@@ -3,6 +3,7 @@ from musicgpt_api_test import musicgpt_lofi_generation
 from audio_stitcher import stitch_audio_files
 from mp3_to_mp4 import convert_audio_to_video
 from description_generator import generate_description
+from rename_songs import rename_songs
 import json
 import random
 
@@ -19,9 +20,10 @@ def main(index):
         lofi_playlist_data = json.load(f)
 
     playlist_data = lofi_playlist_data[index] # set index to what playlist you want
+    song_names = playlist_data['song_names'][:30]
         
     # MusicGPT Call    
-    for i in range(0, len(playlist_data['song_names'][:30]), 2):
+    for i in range(0, len(song_names), 2):
         musicgpt_lofi_generation(
             # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
             prompt=f"A slightly upbeat lofi hip hop instrumental with a warm, cozy, and cheerful mood, slow tempo, simple melody, bright but soothing.",
@@ -29,6 +31,11 @@ def main(index):
             music_style='Lofi',
             song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
         )
+        
+    # Instead of using musicgpt, can use suno and manually move files to song folder, run below command to match the titles
+    # to json for stitcher to work
+    # rename_songs(song_names)
+    
 
     # Call stitcher
     print("🎵 Audio Stitcher (FFmpeg) - LoFi Mix Generator")
