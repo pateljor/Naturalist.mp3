@@ -23,18 +23,18 @@ def main(index):
     song_names = playlist_data['song_names'][:30]
         
     # MusicGPT Call    
-    for i in range(0, len(song_names), 2):
-        musicgpt_lofi_generation(
-            # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
-            prompt=f"A slightly upbeat lofi hip hop instrumental with a warm, cozy, and cheerful mood, slow tempo, simple melody, bright but soothing.",
-            # prompt="A lo-fi instrumental which could suit walking outside in nature in the morning"
-            music_style='Lofi',
-            song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
-        )
+    # for i in range(0, len(song_names), 2):
+    #     musicgpt_lofi_generation(
+    #         # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
+    #         prompt=f"A slightly upbeat lofi hip hop instrumental with a warm, cozy, and cheerful mood, slow tempo, simple melody, bright but soothing.",
+    #         # prompt="A lo-fi instrumental which could suit walking outside in nature in the morning"
+    #         music_style='Lofi',
+    #         song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
+    #     )
         
     # Instead of using musicgpt, can use suno and manually move files to song folder, run below command to match the titles
     # to json for stitcher to work
-    # rename_songs(song_names)
+    rename_songs(song_names)
     
 
     # Call stitcher
@@ -46,7 +46,7 @@ def main(index):
         playlist_title=playlist_data['title'],
         input_folder="songs",
         fade_duration=5,  # 5 seconds crossfade
-        silence_duration=5  # 8 seconds of silence after each fade
+        silence_duration=6  # 8 seconds of silence after each fade
     )
     
     if result_mp3:
@@ -88,4 +88,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=4)
+    main(index=0)
