@@ -64,10 +64,23 @@ def extract_song_title(filename):
     # If no special processing needed, just clean up the filename
     return name.replace("_", " ").title()
 
-def calculate_timestamps(audio_files, fade_duration, silence_duration=0):
+def calculate_timestamps(audio_files, fade_duration, silence_duration=0, producer_tag=None):
     """Calculate when each song starts in the final mix"""
     timestamps = []
     current_time = 0.0
+    
+    # Account for producer tag duration if provided
+    if producer_tag and os.path.exists(producer_tag):
+        producer_duration = get_audio_duration(producer_tag)
+        current_time = producer_duration
+        
+        # Add producer tag to timestamps
+        timestamps.append({
+            'file': producer_tag,
+            'title': 'Producer Tag',
+            'start_time': 0.0,
+            'duration': producer_duration
+        })
     
     for i, audio_file in enumerate(audio_files):
         duration = get_audio_duration(audio_file)
@@ -89,7 +102,7 @@ def calculate_timestamps(audio_files, fade_duration, silence_duration=0):
     
     return timestamps
 
-def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, fade_duration=5, silence_duration=0):
+def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, fade_duration=5, silence_duration=0, producer_tag=None):
     """
     Stitch together all audio files from a folder with fade transitions using FFmpeg
     
@@ -99,6 +112,7 @@ def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, f
         output_file: Output filename (if None, auto-generates with timestamp)
         fade_duration: Fade duration in seconds (default 5)
         silence_duration: Silence duration after each fade out in seconds (default 0)
+        producer_tag: Path to audio file to be added at the beginning (default None)
     """
     
     # Check if input folder exists
@@ -131,12 +145,26 @@ def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, f
     # Sort files alphabetically for consistent order
     audio_files.sort()
     
-    # Calculate timestamps for each song
-    timestamps = calculate_timestamps(audio_files, fade_duration, silence_duration)
+    # Validate producer tag if provided
+    if producer_tag and not os.path.exists(producer_tag):
+        print(f"❌ Producer tag file '{producer_tag}' not found!")
+        return None
     
+    # Calculate timestamps for each song
+    timestamps = calculate_timestamps(audio_files, fade_duration, silence_duration, producer_tag)
+    
+    if producer_tag:
+        print(f"🏷️  Producer tag: {os.path.basename(producer_tag)} ({get_audio_duration(producer_tag):.1f}s)")
     print(f"🎵 Found {len(audio_files)} audio files:")
-    for i, ts in enumerate(timestamps, 1):
-        print(f"  {i}. {os.path.basename(ts['file'])} ({ts['duration']:.1f}s)")
+    
+    # Show producer tag first if it exists, then songs
+    song_counter = 1
+    for i, ts in enumerate(timestamps):
+        if ts['title'] == 'Producer Tag':
+            print(f"  Tag. {os.path.basename(ts['file'])} ({ts['duration']:.1f}s)")
+        else:
+            print(f"  {song_counter}. {os.path.basename(ts['file'])} ({ts['duration']:.1f}s)")
+            song_counter += 1
     
     # Generate output filename if not provided
     if output_file is None:
@@ -158,105 +186,237 @@ def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, f
                 f.write(f"file '{abs_path}'\n")
         
         # Build ffmpeg command with crossfade filter and optional silence
+        # Prepare input files list (producer tag first if exists, then audio files)
+        all_inputs = []
+        input_files = []
+        
+        if producer_tag:
+            all_inputs.extend(['-i', producer_tag])
+            input_files.append(producer_tag)
+        
+        for audio_file in audio_files:
+            all_inputs.extend(['-i', audio_file])
+            input_files.append(audio_file)
+        
         if len(audio_files) == 1:
-            # Single file, just convert (add silence at end if specified)
-            if silence_duration > 0:
-                cmd = [
-                    'ffmpeg', '-i', audio_files[0],
-                    '-filter_complex', f'[0]apad=pad_dur={silence_duration}[out]',
-                    '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
-                    '-y', output_file
-                ]
+            # Single file, with optional producer tag
+            if producer_tag:
+                if silence_duration > 0:
+                    # Producer tag + single song + silence
+                    cmd = [
+                        'ffmpeg'
+                    ] + all_inputs + [
+                        '-filter_complex', f'[0][1]concat=n=2:v=0:a=1[joined];[joined]apad=pad_dur={silence_duration}[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
+                else:
+                    # Producer tag + single song
+                    cmd = [
+                        'ffmpeg'
+                    ] + all_inputs + [
+                        '-filter_complex', '[0][1]concat=n=2:v=0:a=1[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
             else:
-                cmd = [
-                    'ffmpeg', '-i', audio_files[0], '-c:a', 'mp3', '-b:a', '320k',
-                    '-y', output_file
-                ]
+                # Single file only (original logic)
+                if silence_duration > 0:
+                    cmd = [
+                        'ffmpeg', '-i', audio_files[0],
+                        '-filter_complex', f'[0]apad=pad_dur={silence_duration}[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
+                else:
+                    cmd = [
+                        'ffmpeg', '-i', audio_files[0], '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
         elif len(audio_files) == 2:
-            # Two files, crossfade with optional silence
-            if silence_duration > 0:
-                cmd = [
-                    'ffmpeg',
-                    '-i', audio_files[0],
-                    '-i', audio_files[1],
-                    '-filter_complex',
-                    f'[0]apad=pad_dur={silence_duration}[a0];[1]adelay={int((get_audio_duration(audio_files[0]) - fade_duration + silence_duration) * 1000)}|{int((get_audio_duration(audio_files[0]) - fade_duration + silence_duration) * 1000)}[a1];[a0][a1]amix=inputs=2:duration=longest:normalize=0[mixed];[mixed]dynaudnorm[out]',
-                    '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
-                    '-y', output_file
-                ]
+            # Two files, crossfade with optional silence and producer tag
+            if producer_tag:
+                if silence_duration > 0:
+                    # Producer tag + 2 songs with crossfade and silence
+                    producer_duration = get_audio_duration(producer_tag)
+                    song1_delay = producer_duration
+                    song2_delay = producer_duration + get_audio_duration(audio_files[0]) - fade_duration + silence_duration
+                    
+                    cmd = [
+                        'ffmpeg'
+                    ] + all_inputs + [
+                        '-filter_complex',
+                        f'[1]apad=pad_dur={silence_duration}[s1];[s1]adelay={int(song1_delay * 1000)}|{int(song1_delay * 1000)}[a1];[2]adelay={int(song2_delay * 1000)}|{int(song2_delay * 1000)}[a2];[0][a1][a2]amix=inputs=3:duration=longest:normalize=0[mixed];[mixed]dynaudnorm[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
+                else:
+                    # Producer tag + 2 songs with crossfade
+                    producer_duration = get_audio_duration(producer_tag)
+                    song1_delay = producer_duration
+                    song2_delay = producer_duration + get_audio_duration(audio_files[0]) - fade_duration
+                    
+                    cmd = [
+                        'ffmpeg'
+                    ] + all_inputs + [
+                        '-filter_complex',
+                        f'[1]adelay={int(song1_delay * 1000)}|{int(song1_delay * 1000)}[a1];[2]adelay={int(song2_delay * 1000)}|{int(song2_delay * 1000)}[a2];[0][a1][a2]amix=inputs=3:duration=longest:normalize=0[mixed];[mixed]dynaudnorm[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
             else:
-                cmd = [
-                    'ffmpeg',
-                    '-i', audio_files[0],
-                    '-i', audio_files[1],
-                    '-filter_complex',
-                    f'[0][1]acrossfade=d={fade_duration}',
-                    '-c:a', 'mp3', '-b:a', '320k',
-                    '-y', output_file
-                ]
+                # Two files only (original logic)
+                if silence_duration > 0:
+                    cmd = [
+                        'ffmpeg',
+                        '-i', audio_files[0],
+                        '-i', audio_files[1],
+                        '-filter_complex',
+                        f'[0]apad=pad_dur={silence_duration}[a0];[1]adelay={int((get_audio_duration(audio_files[0]) - fade_duration + silence_duration) * 1000)}|{int((get_audio_duration(audio_files[0]) - fade_duration + silence_duration) * 1000)}[a1];[a0][a1]amix=inputs=2:duration=longest:normalize=0[mixed];[mixed]dynaudnorm[out]',
+                        '-map', '[out]', '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
+                else:
+                    cmd = [
+                        'ffmpeg',
+                        '-i', audio_files[0],
+                        '-i', audio_files[1],
+                        '-filter_complex',
+                        f'[0][1]acrossfade=d={fade_duration}',
+                        '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
         else:
-            # Multiple files, chain crossfades with silence
+            # Multiple files, chain crossfades with silence and optional producer tag
             filter_complex = ""
             
-            # Load all inputs
-            inputs = []
-            for i, audio_file in enumerate(audio_files):
-                inputs.extend(['-i', audio_file])
-            
-            if silence_duration > 0:
-                # More complex filter chain with silence padding
-                current_time = 0
-                filter_parts = []
-                
-                for i, audio_file in enumerate(audio_files):
-                    duration = get_audio_duration(audio_file)
-                    if i == 0:
-                        # First file: add silence padding
-                        filter_parts.append(f'[{i}]apad=pad_dur={silence_duration}[a{i}]')
-                        current_time = duration + silence_duration
-                    else:
-                        # Subsequent files: delay to start at right time
-                        delay_ms = int(current_time * 1000)
-                        filter_parts.append(f'[{i}]adelay={delay_ms}|{delay_ms}[a{i}]')
-                        current_time += duration - fade_duration + silence_duration
-                
-                # Mix all streams together with volume normalization
-                stream_refs = ''.join([f'[a{i}]' for i in range(len(audio_files))])
-                filter_parts.append(f'{stream_refs}amix=inputs={len(audio_files)}:duration=longest:normalize=0[mixed]')
-                filter_parts.append('[mixed]dynaudnorm[out]')
-                
-                filter_complex = ';'.join(filter_parts)
+            if producer_tag:
+                # With producer tag: more complex mixing
+                if silence_duration > 0:
+                    # Producer tag + multiple songs with crossfades and silence
+                    current_time = get_audio_duration(producer_tag)
+                    filter_parts = []
+                    
+                    # First audio file starts after producer tag
+                    for i, audio_file in enumerate(audio_files):
+                        input_index = i + 1  # +1 because producer tag is input [0]
+                        duration = get_audio_duration(audio_file)
+                        
+                        if i == 0:
+                            # First song: add silence padding and delay
+                            delay_ms = int(current_time * 1000)
+                            filter_parts.append(f'[{input_index}]apad=pad_dur={silence_duration}[s{i}];[s{i}]adelay={delay_ms}|{delay_ms}[a{i}]')
+                            current_time += duration + silence_duration
+                        else:
+                            # Subsequent files: delay to start at right time (with fade overlap)
+                            delay_ms = int((current_time - fade_duration) * 1000)
+                            filter_parts.append(f'[{input_index}]adelay={delay_ms}|{delay_ms}[a{i}]')
+                            current_time += duration - fade_duration + silence_duration
+                    
+                    # Mix producer tag with all audio streams
+                    stream_refs = '[0]' + ''.join([f'[a{i}]' for i in range(len(audio_files))])
+                    total_inputs = len(audio_files) + 1
+                    filter_parts.append(f'{stream_refs}amix=inputs={total_inputs}:duration=longest:normalize=0[mixed]')
+                    filter_parts.append('[mixed]dynaudnorm[out]')
+                    
+                    filter_complex = ';'.join(filter_parts)
+                else:
+                    # Producer tag + multiple songs with crossfades (no silence)
+                    current_time = get_audio_duration(producer_tag)
+                    filter_parts = []
+                    
+                    for i, audio_file in enumerate(audio_files):
+                        input_index = i + 1  # +1 because producer tag is input [0]
+                        duration = get_audio_duration(audio_file)
+                        
+                        if i == 0:
+                            # First song: delay after producer tag
+                            delay_ms = int(current_time * 1000)
+                            filter_parts.append(f'[{input_index}]adelay={delay_ms}|{delay_ms}[a{i}]')
+                            current_time += duration
+                        else:
+                            # Subsequent files: delay with fade overlap
+                            delay_ms = int((current_time - fade_duration) * 1000)
+                            filter_parts.append(f'[{input_index}]adelay={delay_ms}|{delay_ms}[a{i}]')
+                            current_time += duration - fade_duration
+                    
+                    # Mix producer tag with all audio streams
+                    stream_refs = '[0]' + ''.join([f'[a{i}]' for i in range(len(audio_files))])
+                    total_inputs = len(audio_files) + 1
+                    filter_parts.append(f'{stream_refs}amix=inputs={total_inputs}:duration=longest:normalize=0[mixed]')
+                    filter_parts.append('[mixed]dynaudnorm[out]')
+                    
+                    filter_complex = ';'.join(filter_parts)
                 
                 cmd = [
                     'ffmpeg'
-                ] + inputs + [
+                ] + all_inputs + [
                     '-filter_complex', filter_complex,
                     '-map', '[out]',
                     '-c:a', 'mp3', '-b:a', '320k',
                     '-y', output_file
                 ]
             else:
-                # Original crossfade logic without silence
-                current_stream = "[0]"
-                for i in range(1, len(audio_files)):
-                    if i == 1:
-                        filter_complex += f"{current_stream}[{i}]acrossfade=d={fade_duration}[cf{i}];"
-                        current_stream = f"[cf{i}]"
-                    else:
-                        filter_complex += f"{current_stream}[{i}]acrossfade=d={fade_duration}[cf{i}];"
-                        current_stream = f"[cf{i}]"
+                # No producer tag: original logic
+                # Load all inputs
+                inputs = []
+                for i, audio_file in enumerate(audio_files):
+                    inputs.extend(['-i', audio_file])
                 
-                # Remove trailing semicolon
-                filter_complex = filter_complex.rstrip(';')
-                
-                cmd = [
-                    'ffmpeg'
-                ] + inputs + [
-                    '-filter_complex', filter_complex,
-                    '-map', current_stream,
-                    '-c:a', 'mp3', '-b:a', '320k',
-                    '-y', output_file
-                ]
+                if silence_duration > 0:
+                    # More complex filter chain with silence padding
+                    current_time = 0
+                    filter_parts = []
+                    
+                    for i, audio_file in enumerate(audio_files):
+                        duration = get_audio_duration(audio_file)
+                        if i == 0:
+                            # First file: add silence padding
+                            filter_parts.append(f'[{i}]apad=pad_dur={silence_duration}[a{i}]')
+                            current_time = duration + silence_duration
+                        else:
+                            # Subsequent files: delay to start at right time
+                            delay_ms = int(current_time * 1000)
+                            filter_parts.append(f'[{i}]adelay={delay_ms}|{delay_ms}[a{i}]')
+                            current_time += duration - fade_duration + silence_duration
+                    
+                    # Mix all streams together with volume normalization
+                    stream_refs = ''.join([f'[a{i}]' for i in range(len(audio_files))])
+                    filter_parts.append(f'{stream_refs}amix=inputs={len(audio_files)}:duration=longest:normalize=0[mixed]')
+                    filter_parts.append('[mixed]dynaudnorm[out]')
+                    
+                    filter_complex = ';'.join(filter_parts)
+                    
+                    cmd = [
+                        'ffmpeg'
+                    ] + inputs + [
+                        '-filter_complex', filter_complex,
+                        '-map', '[out]',
+                        '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
+                else:
+                    # Original crossfade logic without silence
+                    current_stream = "[0]"
+                    for i in range(1, len(audio_files)):
+                        if i == 1:
+                            filter_complex += f"{current_stream}[{i}]acrossfade=d={fade_duration}[cf{i}];"
+                            current_stream = f"[cf{i}]"
+                        else:
+                            filter_complex += f"{current_stream}[{i}]acrossfade=d={fade_duration}[cf{i}];"
+                            current_stream = f"[cf{i}]"
+                    
+                    # Remove trailing semicolon
+                    filter_complex = filter_complex.rstrip(';')
+                    
+                    cmd = [
+                        'ffmpeg'
+                    ] + inputs + [
+                        '-filter_complex', filter_complex,
+                        '-map', current_stream,
+                        '-c:a', 'mp3', '-b:a', '320k',
+                        '-y', output_file
+                    ]
         
         print(f"🚀 Running FFmpeg command...")
         
@@ -278,18 +438,30 @@ def stitch_audio_files(playlist_title, input_folder="songs", output_file=None, f
                 # Print timestamp tracklist
                 print(f"\n📋 Tracklist with Timestamps:")
                 print(f"=" * 50)
-                for i, ts in enumerate(timestamps, 1):
+                
+                song_counter = 1
+                for ts in timestamps:
                     timestamp_str = format_timestamp(ts['start_time'])
-                    print(f"{timestamp_str} - {i:02d}. {ts['title']}")
+                    if ts['title'] == 'Producer Tag':
+                        print(f"{timestamp_str} - Producer Tag")
+                    else:
+                        print(f"{timestamp_str} - {song_counter:02d}. {ts['title']}")
+                        song_counter += 1
                 
                 # Also save tracklist to a text file
                 tracklist_file = output_file.replace('.mp3', '_tracklist.txt')
                 with open(tracklist_file, 'w') as f:
                     f.write(f"Tracklist for: {output_file}\n")
                     f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                    for i, ts in enumerate(timestamps, 1):
+                    
+                    song_counter = 1
+                    for ts in timestamps:
                         timestamp_str = format_timestamp(ts['start_time'])
-                        f.write(f"{timestamp_str} - {i:02d}. {ts['title']}\n")
+                        if ts['title'] == 'Producer Tag':
+                            f.write(f"{timestamp_str} - Producer Tag\n")
+                        else:
+                            f.write(f"{timestamp_str} - {song_counter:02d}. {ts['title']}\n")
+                            song_counter += 1
                 print(f"📝 Tracklist saved to: {tracklist_file}")
                 
                 return output_file

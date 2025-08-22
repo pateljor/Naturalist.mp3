@@ -46,7 +46,8 @@ def main(index):
         playlist_title=playlist_data['title'],
         input_folder="songs",
         fade_duration=5,  # 5 seconds crossfade
-        silence_duration=6  # 8 seconds of silence after each fade
+        silence_duration=6,  # 8 seconds of silence after each fade
+        producer_tag='producer_tags/intro_producer_tag.mp3'
     )
     
     if result_mp3:
@@ -88,4 +89,4 @@ def main(index):
     
         
 if __name__ == "__main__":
-    main(index=6)
+    main(index=7)

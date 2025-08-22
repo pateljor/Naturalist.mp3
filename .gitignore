@@ -6,6 +6,7 @@ prod_songs/
 spare_songs/
 playlists/
 descriptions/
+producer_tags/
 
 # claude settings per os
 .claude
