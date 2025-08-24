@@ -51,7 +51,8 @@ def generate_description(description, tracklist_file, hashtags):
     
     
     
-    
+All music featured on this channel is produced by Naturalist.mp3.
+Images are sourced from Unsplash and edited by Naturalist.mp3 before use.
     
     
     
