@@ -108,10 +108,10 @@ lofi-channel/
 
 ## 🛠️ Other Tools & Future Considerations
 
-## 🔧 Tools
+### 🔧 Tools
 - **Figma:** Used to design/edit the thumbnails
 - **Audacity:** For tweaks to most of the AI generated content and mixing the producer tags
 - **Unsplash:** For sourcing the images used in the thumbnails
 
-## 🔜 Future Considerations
+### 🔜 Future Considerations
 - **Eleven Labs API:** May have more consistent performance similar to Sunos model but has official API
