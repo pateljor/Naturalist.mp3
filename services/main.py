@@ -1,4 +1,4 @@
-from stability_official_api import stability_lofi_generation
+from stability_api import stability_lofi_generation
 from musicgpt_api import musicgpt_lofi_generation
 from audio_stitcher import stitch_audio_files
 from mp3_to_mp4 import convert_audio_to_video
