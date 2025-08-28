@@ -35,7 +35,7 @@ def format_timestamp(seconds):
         return f"{minutes:02d}:{secs:02d}"
 
 def extract_song_title(filename):
-    """Extract clean song title from filename"""
+    """Extract clean song title from filename, relevant for api connection"""
     # Remove file extension
     name = os.path.splitext(os.path.basename(filename))[0]
     

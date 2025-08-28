@@ -1,5 +1,5 @@
 from stability_official_api import stability_lofi_generation
-from musicgpt_api_test import musicgpt_lofi_generation
+from musicgpt_api import musicgpt_lofi_generation
 from audio_stitcher import stitch_audio_files
 from mp3_to_mp4 import convert_audio_to_video
 from description_generator import generate_description
@@ -22,7 +22,7 @@ def main(index):
     playlist_data = lofi_playlist_data[index] # set index to what playlist you want
     song_names = playlist_data['song_names'][:30]
         
-    # MusicGPT Call    
+    ### MusicGPT Call - Deprecated showing for contextg    
     # for i in range(0, len(song_names), 2):
     #     musicgpt_lofi_generation(
     #         # prompt='Create a chill lofi hip hop beat with jazzy piano chords, soft vinyl crackle, and a relaxing atmosphere perfect for studying',
@@ -31,8 +31,22 @@ def main(index):
     #         music_style='Lofi',
     #         song_names = [playlist_data['song_names'][i], playlist_data['song_names'][i+1]]
     #     )
+    
+    ### Stability API Call - Deprecated showing for context     
+    # print("🎵 Stability AI Stable Audio 2.0 - Official API")
+    # print("🎵 ...Logic for Music GPT comming soon")
+    # print("=" * 60)
+    # print()
+
+    # # Stability Call    
+    # for song in playlist_data['song_names']:
+    #     stability_lofi_generation(
+    #         song_name=song,
+    #         prompt=f"A slightly upbeat lofi hip hop instrumental at ~88 BPM, with a warm, cozy, and cheerful mood (uplifting yet relaxed). Featuring jazzy piano, soft vinyl crackle, gentle acoustic guitar plucks, mellow laid-back drums with light swing, smooth jazzy bass, and ambient background texture — bright but soothing.",
+    #         duration=random.randint(int(150), int(190)) # random time intervals, stable caps at 190 for longest song
+    #     ) 
         
-    # Instead of using musicgpt, can use suno and manually move files to song folder, run below command to match the titles
+    # Instead of using musicgpt or stability (poor audio quality), can use suno and manually (no api atm) move files to song folder, run below command to match the titles
     # to json for stitcher to work
     rename_songs(song_names)
     
