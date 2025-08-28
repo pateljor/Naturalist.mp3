@@ -93,7 +93,7 @@ lofi-channel/
 <!-- YouTube Channel Information Section -->
 ### 📺 Official Channel
 **Channel Name:** Naturalist.mp3
-**Link:** [\[Your YouTube Channel URL\]](https://www.youtube.com/channel/UClIOcu7tgrkgM_aaDdTZlpw)
+**Link:** [\[Naturalist.mp3 Channel\]](https://www.youtube.com/channel/UClIOcu7tgrkgM_aaDdTZlpw)
 
 ### 📈 Channel Stats
 - **Subscribers:** 394
